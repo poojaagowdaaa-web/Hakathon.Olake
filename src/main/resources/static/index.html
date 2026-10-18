@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask OLake</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; background: #f6f7fb; color: #1f2430; }
+  h1 { margin-bottom: 4px; }
+  p.sub { margin-top: 0; color: #5b6475; }
+  textarea { width: 100%; box-sizing: border-box; padding: 12px; font-size: 16px; border: 1px solid #c9cfdb; border-radius: 8px; resize: vertical; }
+  button { margin-top: 10px; padding: 10px 20px; font-size: 16px; background: #3b5bdb; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+  button:disabled { background: #9aa6d6; cursor: wait; }
+  #answer { margin-top: 20px; padding: 16px; background: #fff; border: 1px solid #dde1ea; border-radius: 8px; white-space: pre-wrap; display: none; }
+  #sources { margin-top: 12px; font-size: 14px; }
+  #sources a { display: block; color: #3b5bdb; }
+  .chips button { background: #e7ebfa; color: #2f4ac0; font-size: 14px; padding: 6px 12px; margin: 4px 6px 0 0; }
+</style>
+</head>
+<body>
+  <h1>Ask OLake</h1>
+  <p class="sub">Answers come only from the OLake documentation.</p>
+  <textarea id="q" rows="3" placeholder="Type your question about OLake..."></textarea>
+  <div class="chips">
+    <button type="button" data-q="Which source databases can OLake ingest data from?">Supported sources</button>
+    <button type="button" data-q="Is Cassandra supported as a source in OLake?">Cassandra?</button>
+    <button type="button" data-q="What sync modes does OLake support?">Sync modes</button>
+  </div>
+  <button id="go" type="button">Ask</button>
+  <div id="answer"></div>
+  <div id="sources"></div>
+<script>
+  const q = document.getElementById('q');
+  const go = document.getElementById('go');
+  const answer = document.getElementById('answer');
+  const sources = document.getElementById('sources');
+
+  async function ask() {
+    const question = q.value.trim();
+    if (!question) return;
+    go.disabled = true;
+    answer.style.display = 'block';
+    answer.textContent = 'Thinking...';
+    sources.textContent = '';
+    try {
+      const res = await fetch('/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      });
+      if (!res.ok) throw new Error('Server returned ' + res.status);
+      const data = await res.json();
+      answer.textContent = data.answer;
+      (data.sources || []).forEach(function (url) {
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.textContent = url;
+        sources.appendChild(a);
+      });
+    } catch (e) {
+      answer.textContent = 'Something went wrong: ' + e.message;
+    }
+    go.disabled = false;
+  }
+
+  go.addEventListener('click', ask);
+  document.querySelectorAll('.chips button').forEach(function (b) {
+    b.addEventListener('click', function () { q.value = b.dataset.q; ask(); });
+  });
+</script>
+</body>
+</html>
